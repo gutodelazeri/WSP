@@ -2,7 +2,7 @@
 
 This document provides detailed instructions on how to use the instance generator, as implemented by the script `instance_generator.py`.
 
-The script supports a dynamic visualization of the generated instances. A slider allows the user to control the fire propagation over the landscape by going forward or backwards in time. As in Figure TBD in the paper, 3D bars are used to represent cells; red bars represent burned vegetation, and unburned areas are shown in green. The figure below presents a snapshot of this visualization. The same landscape is represented using different resolutions (grid sizes). 
+The script supports a dynamic visualization of the generated instances. A slider allows the user to control the fire propagation over the landscape by going forward or backwards in time. As in Figure 3 in the paper, 3D bars are used to represent cells; red bars represent burned vegetation, and unburned areas are shown in green. The figure below presents a snapshot of this visualization. The same landscape is represented using different resolutions (grid sizes). 
 
 ![Same landscape represented using different grid sizes.](grids_h.png)
 
@@ -21,7 +21,7 @@ The script supports a dynamic visualization of the generated instances. A slider
 For those who are eager to generate an instance and see what it looks like, please type the following:
 
 ```bash
-python instance_generation.py --grid Medium --slope Steep --wind Strong --seed 1 --show_animation
+python instance_generation.py --grid Medium --slope Moderate --wind Light --seed 1 --show_animation
 ```
 
 This will generate the instance files and display an interactive 3D visualization with a time slider to control fire propagation.
