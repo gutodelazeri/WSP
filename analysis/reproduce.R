@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Reproduces the Skillings--Mack analyses reported in Table 5 and Figure 3.
+# Reproduces the analyses reported in Table 5 and Figures 6 and 7.
 # Usage: Rscript analysis/reproduce.R [results.csv] [output-directory]
 
 required_packages <- c("NSM3")
@@ -18,16 +18,14 @@ dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 
 factor_columns <- c("grid", "slope", "wind", "delay", "num_resources",
                     "num_decision_points", "first_release_time", "last_release_time")
-required_columns <- c("instance", factor_columns, "algorithm", "seed", "objv", "lb")
+required_columns <- c("instance", "parameter_group", factor_columns, "algorithm", "seed", "objv", "lb")
 dat <- read.csv(input, stringsAsFactors = FALSE, check.names = FALSE)
 missing_columns <- setdiff(required_columns, names(dat))
 if (length(missing_columns)) {
     stop("Input is missing required column(s): ", paste(missing_columns, collapse = ", "), call. = FALSE)
 }
-# The default configuration is shared by the four parameter groups. Keep the
-# first recorded result for a repeated (instance, algorithm, seed), matching
-# the normalization used for the paper analyses.
-dat <- dat[!duplicated(dat[c("instance", "algorithm", "seed")]), , drop = FALSE]
+# Table 5 and Figure 6 use one copy of the shared default configuration.
+dat_normalized <- dat[!duplicated(dat[c("instance", "algorithm", "seed")]), , drop = FALSE]
 
 # The four parameter groups in the manuscript. Factors not being varied are
 # fixed at their stated default levels.
@@ -41,13 +39,13 @@ groups <- list(
     release_window = c("first_release_time", "last_release_time")
 )
 
-instance_seed <- sub(".*_", "", dat$instance)
+instance_seed <- sub(".*_", "", dat_normalized$instance)
 
 subset_group <- function(varying) {
     fixed <- setdiff(names(defaults), varying)
-    keep <- rep(TRUE, nrow(dat))
-    for (name in fixed) keep <- keep & dat[[name]] == defaults[[name]]
-    dat[keep, , drop = FALSE]
+    keep <- rep(TRUE, nrow(dat_normalized))
+    for (name in fixed) keep <- keep & dat_normalized[[name]] == defaults[[name]]
+    dat_normalized[keep, , drop = FALSE]
 }
 
 # Returns the omnibus test, treatment scores, and all post-hoc comparisons.
@@ -102,7 +100,7 @@ difficulty_pairs <- list()
 for (group_name in names(groups)) {
     varying <- groups[[group_name]]
     group_data <- subset_group(varying)
-    group_data$instance_seed <- instance_seed[match(group_data$instance, dat$instance)]
+    group_data$instance_seed <- instance_seed[match(group_data$instance, dat_normalized$instance)]
     group_data$algorithm_seed <- group_data$seed
     group_data$factor_pair <- do.call(paste, c(group_data[varying], sep = " | "))
 
@@ -119,7 +117,7 @@ for (group_name in names(groups)) {
     algorithm_scores[[group_name]] <- transform(result$scores, group = group_name)
     algorithm_pairs[[group_name]] <- transform(result$comparisons, group = group_name, delta = result$delta)
 
-    # Figure 3: factor combinations are treatments; algorithm-instance pairs
+    # Figure 6: factor combinations are treatments; algorithm-instance pairs
     # are blocks; response is relative deviation from the best-known value.
     best <- aggregate(objv ~ instance, group_data, min)
     names(best)[2] <- "bkv"
@@ -141,4 +139,13 @@ write.csv(do.call(rbind, algorithm_pairs), file.path(outdir, "table5_comparisons
 write.csv(do.call(rbind, difficulty_scores), file.path(outdir, "difficulty_scores.csv"), row.names = FALSE)
 write.csv(do.call(rbind, difficulty_pairs), file.path(outdir, "difficulty_comparisons.csv"), row.names = FALSE)
 
-cat("Wrote Skillings--Mack results to", normalizePath(outdir), "\n")
+command_args <- commandArgs(trailingOnly = FALSE)
+script_arg <- grep("^--file=", command_args, value = TRUE)
+script_dir <- if (length(script_arg)) dirname(normalizePath(sub("^--file=", "", script_arg[[1]]))) else "analysis"
+profile_script <- file.path(script_dir, "performance_profiles.py")
+python <- Sys.which("python3")
+if (!nzchar(python)) stop("Python 3 is required to reproduce Figure 7.", call. = FALSE)
+status <- system2(python, c(shQuote(profile_script), shQuote(input), shQuote(outdir)))
+if (status != 0) stop("Failed to reproduce the Figure 7 performance profiles.", call. = FALSE)
+
+cat("Wrote reproduced analyses to", normalizePath(outdir), "\n")
